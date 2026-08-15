@@ -33,7 +33,6 @@
       <div><span class="dot"></span> BARKNET ONLINE</div>
       <div id="dogNameTop">DOG NETWORK</div>
     </div>
-
     <div class="identity">
       <div class="avatar" id="dogAvatar">🐶</div>
       <div class="identity-copy">
@@ -43,65 +42,20 @@
         <div class="provider" id="providerBadge">AI engine: preparing…</div>
       </div>
     </div>
-
     <div class="stats">
-      <div><b id="chaos">92</b><span>Chaos</span></div>
-      <div><b id="treats">98</b><span>Treats</span></div>
-      <div><b id="zoomies">95</b><span>Zoomies</span></div>
-      <div><b id="loyalty">100</b><span>Loyalty</span></div>
+      <div><b id="chaos">92</b><span>Chaos</span></div><div><b id="treats">98</b><span>Treats</span></div><div><b id="zoomies">95</b><span>Zoomies</span></div><div><b id="loyalty">100</b><span>Loyalty</span></div>
     </div>
-
     <div class="grid">
-      <article class="card featured">
-        <span class="tag">BREAKING BARK</span>
-        <h3 id="newsHeadline">Human opened the refrigerator.</h3>
-        <p id="newsBody">Millions of dogs are monitoring the situation. No treats have been confirmed.</p>
-      </article>
-
-      <article class="card">
-        <span class="tag">HUMAN INVESTIGATION BUREAU</span>
-        <h3 id="caseTitle">The Missing Biscuit</h3>
-        <p id="caseText">A biscuit has disappeared. One suspect has already eaten the evidence.</p>
-        <button class="secondary" id="caseBtn">Investigate →</button>
-        <div id="caseOutput" class="result"></div>
-      </article>
-
-      <article class="card voice-card">
-        <span class="tag">DOG VOICE · ELEVENLABS</span>
-        <h3>Talk to your dog</h3>
-        <div class="ask-row">
-          <input id="talkInput" maxlength="500" placeholder="Why did you eat my homework?" aria-label="Ask your dog">
-          <button class="secondary" id="talkBtn">Ask →</button>
-        </div>
-        <p id="dogReply">Your dog is waiting for a question.</p>
-        <audio id="dogAudio" controls class="hidden"></audio>
-        <div id="voiceStatus" class="status"></div>
-      </article>
-
-      <article class="card memory">
-        <span class="tag">MEMORY VAULT</span>
-        <h3>One thing you love</h3>
-        <input id="memoryInput" maxlength="500" placeholder="He waits at the door every day…" aria-label="Dog memory">
-        <button class="secondary" id="memoryBtn">Create memory →</button>
-        <div id="memoryOutput" class="memory-output"></div>
-        <button class="ghost hidden" id="pawprintBtn">🐾 Preserve this Pawprint on Solana devnet</button>
-        <div id="pawprintOutput" class="status"></div>
-      </article>
+      <article class="card featured"><span class="tag">BREAKING BARK</span><h3 id="newsHeadline">Human opened the refrigerator.</h3><p id="newsBody">Millions of dogs are monitoring the situation. No treats have been confirmed.</p></article>
+      <article class="card"><span class="tag">HUMAN INVESTIGATION BUREAU</span><h3 id="caseTitle">The Missing Biscuit</h3><p id="caseText">A biscuit has disappeared. One suspect has already eaten the evidence.</p><button class="secondary" id="caseBtn">Investigate →</button><div id="caseOutput" class="result"></div></article>
+      <article class="card voice-card"><span class="tag">DOG VOICE · ELEVENLABS</span><h3>Talk to your dog</h3><div class="ask-row"><input id="talkInput" maxlength="500" placeholder="Why did you eat my homework?" aria-label="Ask your dog"><button class="secondary" id="talkBtn">Ask →</button></div><p id="dogReply">Your dog is waiting for a question.</p><audio id="dogAudio" controls class="hidden"></audio><div id="voiceStatus" class="status"></div></article>
+      <article class="card memory"><span class="tag">MEMORY VAULT</span><h3>One thing you love</h3><input id="memoryInput" maxlength="500" placeholder="He waits at the door every day…" aria-label="Dog memory"><button class="secondary" id="memoryBtn">Create memory →</button><div id="memoryOutput" class="memory-output"></div><button class="ghost hidden" id="pawprintBtn">🐾 Preserve this Pawprint on Solana devnet</button><div id="pawprintOutput" class="status"></div></article>
     </div>
-
-    <section class="observatory card" id="observatory">
-      <div>
-        <span class="tag">BARKVERSE OBSERVATORY · SNOWFLAKE</span>
-        <h3>The dog internet, measured.</h3>
-        <p>Anonymous aggregate signals turn our fictional dog civilization into a living dashboard.</p>
-      </div>
-      <button class="secondary" id="observatoryBtn">Open Observatory →</button>
-      <div id="observatoryOutput" class="observatory-grid"></div>
-    </section>
-
+    <section class="observatory card" id="observatory"><div><span class="tag">BARKVERSE OBSERVATORY · SNOWFLAKE</span><h3>The dog internet, measured.</h3><p>Anonymous aggregate signals turn our fictional dog civilization into a living dashboard.</p></div><button class="secondary" id="observatoryBtn">Open Observatory →</button><div id="observatoryOutput" class="observatory-grid"></div></section>
     <footer class="footer">BARKVERSE · built for DEV Weekend Challenge: Dog Days Edition</footer>
   </section>
 </main>
 <script src="/app/app.js"></script>
+<script src="/app/analytics.js"></script>
 </body>
 </html>
