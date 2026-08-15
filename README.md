@@ -41,7 +41,7 @@ Copy `.env.example` to `.env.local` for local development, or add the variables 
 
 **Never commit real API keys.**
 
-Required for full AI/voice integrations:
+Full integrations support:
 
 ```text
 GOOGLE_AI_API_KEY=
@@ -70,8 +70,12 @@ The project is intentionally dependency-light and can be deployed as a static si
 
 The repository was initialized and developed during the challenge window. Commit history is intentionally incremental so the build process remains auditable.
 
+## Submission readiness
+
+Feature work is frozen for the challenge. Final verification focuses on the production deployment, provider configuration, camera/gallery flow, dog gate, AI discovery, voice fallback, memory, Solana fee/confirmation flow, responsive layout, and final DEV submission article/demo links.
+
 ## Status
 
-**Active challenge build — August 15, 2026.**
+**Submission candidate — August 15, 2026.**
 
-The current branch contains the AI gateway, OpenRouter fallback path, dog discovery API, voice API, memory API, Snowflake telemetry/observatory adapter, Solana devnet Pawprint flow, and Barkcade Treat Dash.
+The current branch contains the AI gateway, OpenRouter fallback path, dog discovery API, voice API, memory API, Snowflake telemetry/observatory adapter, Solana devnet Pawprint flow, Barkcade Treat Dash, BARKINDER discovery, multilingual onboarding and help experience.
