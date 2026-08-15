@@ -8,7 +8,7 @@ const state = {
 const $ = (selector) => document.querySelector(selector);
 const els = {
   photo: $('#dogPhoto'), preview: $('#preview'), demo: $('#demoBtn'), world: $('#world'),
-  nameInput: $('#dogNameInput'), uploadTitle: $('#uploadTitle'), uploadHint: $('#uploadHint'),
+  nameInput: $('#dogNameInput'), uploadTitle: $('#uploadTitle'), uploadHint: $('#uploadHint'), uploadBox: $('#uploadBox'),
   dogName: $('#dogName'), dogNameTop: $('#dogNameTop'), occupation: $('#occupation'), provider: $('#providerBadge'),
   chaos: $('#chaos'), treats: $('#treats'), zoomies: $('#zoomies'), loyalty: $('#loyalty'),
   newsHeadline: $('#newsHeadline'), newsBody: $('#newsBody'), caseTitle: $('#caseTitle'), caseText: $('#caseText'), caseBtn: $('#caseBtn'), caseOutput: $('#caseOutput'),
@@ -39,6 +39,12 @@ function dataUrlFromFile(file) {
   });
 }
 
+function openPhotoPicker() { els.photo?.click(); }
+els.uploadBox?.addEventListener('click', openPhotoPicker);
+els.uploadBox?.addEventListener('keydown', (event) => {
+  if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); openPhotoPicker(); }
+});
+
 function renderDog(dog) {
   state.dog = dog;
   els.dogName.textContent = dog.name || 'Your Dog';
@@ -60,12 +66,18 @@ els.photo.addEventListener('change', async () => {
   const file = els.photo.files?.[0];
   if (!file) return;
   state.mimeType = file.type || 'image/jpeg';
-  const dataUrl = await dataUrlFromFile(file);
-  state.imageBase64 = dataUrl.split(',')[1];
-  els.preview.innerHTML = `<img src="${dataUrl}" alt="Uploaded dog">`;
-  els.preview.classList.remove('hidden');
-  els.uploadTitle.textContent = 'Dog acquired';
-  els.uploadHint.textContent = 'Barkverse is ready to discover them.';
+  try {
+    const dataUrl = await dataUrlFromFile(file);
+    state.imageBase64 = dataUrl.split(',')[1];
+    els.preview.innerHTML = `<img src="${dataUrl}" alt="Uploaded dog">`;
+    els.preview.classList.remove('hidden');
+    els.uploadTitle.textContent = 'Dog acquired';
+    els.uploadHint.textContent = 'Barkverse is ready to discover them.';
+  } catch {
+    state.imageBase64 = null;
+    els.uploadTitle.textContent = 'Photo could not be read';
+    els.uploadHint.textContent = 'Please choose another image.';
+  }
 });
 
 els.demo.addEventListener('click', async () => {
@@ -78,9 +90,7 @@ els.demo.addEventListener('click', async () => {
     });
     const dog = await response.json();
     renderDog(dog);
-  } catch {
-    renderDog(fallbackDog(requestedName));
-  }
+  } catch { renderDog(fallbackDog(requestedName)); }
   els.world.classList.remove('hidden');
   els.world.scrollIntoView({ behavior: 'smooth', block: 'start' });
   setLoading(els.demo, false);
