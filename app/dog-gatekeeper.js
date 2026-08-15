@@ -8,11 +8,20 @@
   const pawprintOutput = document.querySelector('#pawprintOutput');
   if (!input) return;
 
-  // Shared API timeout: every interactive API request must eventually settle so
-  // its button can leave the loading state. Existing explicit AbortSignals win.
   const nativeFetch = window.fetch.bind(window);
+  let cachedDogResponse = null;
+  let replayingEntry = false;
+
+  // Every API request must settle. This prevents any interactive button from
+  // remaining disabled forever when an upstream provider stalls.
   window.fetch = async (resource, options = {}) => {
     const url = typeof resource === 'string' ? resource : (resource?.url || '');
+    if (String(url) === '/api/dog' && cachedDogResponse) {
+      const cached = JSON.parse(JSON.stringify(cachedDogResponse));
+      try { cached.name = JSON.parse(options.body || '{}').name || cached.name; } catch {}
+      cachedDogResponse = null;
+      return new Response(JSON.stringify(cached), { status: 200, headers: { 'Content-Type': 'application/json' } });
+    }
     if (!String(url).startsWith('/api/') || options.signal) return nativeFetch(resource, options);
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), 20000);
@@ -24,9 +33,12 @@
     if (title) title.textContent = headline;
     if (hint) { hint.textContent = message; hint.dataset.state = bad ? 'error' : 'ok'; }
   };
+  const restoreEntryButton = () => {
+    if (!button) return;
+    button.disabled = false; button.removeAttribute('aria-busy');
+    button.textContent = button.dataset.entryLabel || 'Enter BARKVERSE →';
+  };
 
-  // Camera/gallery controls are intentionally lightweight. AI validation happens
-  // once, when the user presses Enter BARKVERSE, instead of blocking the upload UI.
   const uploadBox = document.querySelector('#uploadBox');
   if (uploadBox && !document.querySelector('#dogPhotoChoices')) {
     const choices = document.createElement('div');
@@ -64,17 +76,49 @@
         const img = document.createElement('img'); img.src = String(reader.result); img.alt = 'Dog photo preview';
         preview.appendChild(img); preview.classList.remove('hidden');
       }
-      setStatus('Dog photo ready 🐾', 'Photo prepared. Press Enter BARKVERSE to start one AI discovery request.');
-      if (button) { button.disabled = false; button.removeAttribute('aria-busy'); }
+      setStatus('Dog photo ready 🐾', 'Photo prepared. Press Enter BARKVERSE to start the dog check.');
+      restoreEntryButton();
     };
     reader.onerror = () => setStatus('Photo could not be read', 'Try another JPEG, PNG or WebP image.', true);
     reader.readAsDataURL(file);
   });
 
-  document.addEventListener('click', (event) => {
-    if (event.target === button && !input.files?.length) {
+  // Entry now gives immediate visual feedback, performs exactly one dog check,
+  // then lets app.js consume the verified response. No AI request happens during upload.
+  document.addEventListener('click', async (event) => {
+    if (event.target !== button || replayingEntry) return;
+    if (!input.files?.length) {
       event.preventDefault(); event.stopImmediatePropagation();
       setStatus('Bring a dog first 🐾', 'Upload a dog photo or use the camera. BARKVERSE accepts dogs only.', true);
+      return;
+    }
+    event.preventDefault(); event.stopImmediatePropagation();
+    const file = input.files[0];
+    button.dataset.entryLabel = button.textContent;
+    button.disabled = true; button.setAttribute('aria-busy', 'true'); button.textContent = '🐾 Checking dog…';
+    setStatus('Checking the visitor…', 'AI is verifying that this is a dog. This check runs once.');
+    try {
+      const dataUrl = await new Promise((resolve, reject) => {
+        const reader = new FileReader(); reader.onload = () => resolve(String(reader.result)); reader.onerror = reject; reader.readAsDataURL(file);
+      });
+      const response = await nativeFetch('/api/dog', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: '', imageBase64: dataUrl.split(',')[1], mimeType: file.type })
+      });
+      const json = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(json.error || 'This image could not be accepted as a dog.');
+      cachedDogResponse = json;
+      replayingEntry = true;
+      restoreEntryButton();
+      setStatus('Dog verified 🐶', 'Opening BARKVERSE…');
+      button.click();
+      replayingEntry = false;
+    } catch (error) {
+      cachedDogResponse = null;
+      replayingEntry = false;
+      restoreEntryButton();
+      const message = error?.name === 'AbortError' ? 'The dog check took too long. Please try again with a clear photo.' : String(error?.message || error);
+      setStatus('Dog check failed', message, true);
     }
   }, true);
 
