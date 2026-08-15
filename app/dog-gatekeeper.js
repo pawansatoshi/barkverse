@@ -8,6 +8,18 @@
   const pawprintOutput = document.querySelector('#pawprintOutput');
   if (!input) return;
 
+  // Shared API timeout: every interactive API request must eventually settle so
+  // its button can leave the loading state. Existing explicit AbortSignals win.
+  const nativeFetch = window.fetch.bind(window);
+  window.fetch = async (resource, options = {}) => {
+    const url = typeof resource === 'string' ? resource : (resource?.url || '');
+    if (!String(url).startsWith('/api/') || options.signal) return nativeFetch(resource, options);
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 20000);
+    try { return await nativeFetch(resource, { ...options, signal: controller.signal }); }
+    finally { clearTimeout(timer); }
+  };
+
   const setStatus = (headline, message, bad = false) => {
     if (title) title.textContent = headline;
     if (hint) { hint.textContent = message; hint.dataset.state = bad ? 'error' : 'ok'; }
@@ -45,8 +57,6 @@
       setStatus('Photo is too large', 'Choose a dog photo under 3 MB. We optimize it before AI inspection.', true);
       input.value = ''; if (preview) preview.classList.add('hidden'); return;
     }
-    // Do not call /api/dog here. app.js compresses the image and performs the
-    // single AI request after Enter is pressed. This removes the apparent freeze.
     const reader = new FileReader();
     reader.onload = () => {
       if (preview) {
