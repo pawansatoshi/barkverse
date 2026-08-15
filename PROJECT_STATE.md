@@ -18,6 +18,8 @@ The product is funny, entertaining, emotional, child-friendly, dog-lover friendl
 8. No feature is allowed to threaten the submission deadline.
 9. Breed is presented only as a visual estimate with confidence, never as a certain identity/health claim.
 10. User-uploaded images are restricted to supported web formats and kept below the serverless payload ceiling.
+11. Solana UI must show a real network fee estimate and actual confirmed transaction fee; never display a fabricated zero-gas state.
+12. Camera and manual gallery upload must be explicit, accessible and usable across mobile and desktop.
 
 ## Current implementation state
 
@@ -37,7 +39,7 @@ The product is funny, entertaining, emotional, child-friendly, dog-lover friendl
 - [x] Barkcade Treat Dash
 - [x] ElevenLabs voice integration + browser voice fallback
 - [x] Memory Vault
-- [x] Solana devnet Pawprint flow
+- [x] Solana devnet Pawprint flow with real fee verification
 - [x] Snowflake SQL API adapter
 - [x] Anonymous Snowflake event telemetry
 - [x] Barkverse Observatory
@@ -45,17 +47,17 @@ The product is funny, entertaining, emotional, child-friendly, dog-lover friendl
 - [x] Prompt-boundary hardening for user-generated content
 - [x] GitHub Actions JavaScript/static validation
 - [x] Mobile-responsive UI
+- [x] Explicit camera + manual gallery upload controls
 - [x] Competition documentation
-- [x] Latest production deployment READY
-- [x] Production root endpoint HTTP 200 verified
-- [x] Recent Vercel runtime error scan shows no runtime errors
+- [x] Latest code committed to `main`
+- [x] Production deployment pipeline triggered from the latest main commit
 - [ ] Live provider smoke test with configured Vercel environment variables
 - [ ] Final DEV submission article/demo links
 
-## Current production deployment
+## Latest engineering commit
 
-Latest verified production deployment is linked to `barkverse.vercel.app` and commit `16d1d3c2fdcd2637fae94b056520547f13cd97cc`.
+`4de9e11a919ea0ebeaecb41c7a6a3d2336e31c33` — hardened explicit photo upload and real Solana devnet fee verification.
 
 ## Completion rule
 
-The application implementation and competition blueprint are complete. Remaining work is limited to final live provider interaction verification and the DEV submission package. No further feature expansion should be made unless a production smoke test exposes a blocking defect.
+No feature expansion unless a production smoke test exposes a blocking defect. Final sign-off requires the production deployment to contain the latest commit and the live camera/gallery, dog gate, AI discovery, voice, memory, Solana fee/transaction and responsive UI paths to be verified.
