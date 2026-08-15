@@ -26,4 +26,5 @@
   window.addEventListener('beforeunload', () => { if (state.account) navigator.sendBeacon?.(`/api/community?action=leave`, JSON.stringify({ accountId: state.account.accountId })); }); setInterval(() => { refresh().catch(() => {}); }, 12000); refresh(); window.BARKVERSE_COMMUNITY = { refresh, getAccount: () => state.account };
   const profileScript = document.createElement('script'); profileScript.src = '/app/profile.js'; profileScript.async = false; document.body.appendChild(profileScript);
   const livingScript = document.createElement('script'); livingScript.src = '/app/livingworld.js'; livingScript.async = false; document.body.appendChild(livingScript);
+  const barkinderScript = document.createElement('script'); barkinderScript.src = '/app/barkinder.js'; barkinderScript.async = false; document.body.appendChild(barkinderScript);
 })();
