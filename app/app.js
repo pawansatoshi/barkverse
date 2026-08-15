@@ -1,24 +1,25 @@
-const state = { dog: null, imageBase64: null, mimeType: 'image/jpeg', memory: null };
+const state = { dog: null, imageBase64: null, mimeType: 'image/jpeg', memory: null, moodTimer: null };
 const MAX_IMAGE_BYTES = 3 * 1024 * 1024;
 const ALLOWED_MIME = new Set(['image/jpeg', 'image/png', 'image/webp']);
 const $ = (selector) => document.querySelector(selector);
 const els = {
-  photo: $('#dogPhoto'), preview: $('#preview'), demo: $('#demoBtn'), world: $('#world'), nameInput: $('#dogNameInput'),
-  uploadTitle: $('#uploadTitle'), uploadHint: $('#uploadHint'), uploadBox: $('#uploadBox'), dogAvatar: $('#dogAvatar'),
+  hero: $('#hero'), photo: $('#dogPhoto'), preview: $('#preview'), demo: $('#demoBtn'), world: $('#world'), nameInput: $('#dogNameInput'),
+  uploadTitle: $('#uploadTitle'), uploadHint: $('#uploadHint'), uploadBox: $('#uploadBox'), dogAvatar: $('#dogAvatar'), portraitStage: $('#portraitStage'),
+  expressionBubble: $('#expressionBubble'), expressionLabel: $('#expressionLabel'), moodText: $('#moodText'), breedPanel: $('#breedPanel'),
   dogName: $('#dogName'), dogNameTop: $('#dogNameTop'), occupation: $('#occupation'), tagline: $('#tagline'), provider: $('#providerBadge'),
   breedLabel: $('#breedLabel'), breedNote: $('#breedNote'), breedConfidence: $('#breedConfidence'), traits: $('#traits'),
   chaos: $('#chaos'), treats: $('#treats'), zoomies: $('#zoomies'), loyalty: $('#loyalty'),
   newsHeadline: $('#newsHeadline'), newsBody: $('#newsBody'), caseTitle: $('#caseTitle'), caseText: $('#caseText'), caseBtn: $('#caseBtn'), caseOutput: $('#caseOutput'),
-  talkInput: $('#talkInput'), talkBtn: $('#talkBtn'), dogReply: $('#dogReply'), dogAudio: $('#dogAudio'), voiceStatus: $('#voiceStatus'),
+  talkInput: $('#talkInput'), talkBtn: $('#talkBtn'), hearDogBtn: $('#hearDogBtn'), barkBtn: $('#barkBtn'), dogReply: $('#dogReply'), dogAudio: $('#dogAudio'), voiceStatus: $('#voiceStatus'),
   memoryInput: $('#memoryInput'), memoryBtn: $('#memoryBtn'), memoryOutput: $('#memoryOutput'), pawprintBtn: $('#pawprintBtn'), pawprintOutput: $('#pawprintOutput'),
-  observatoryBtn: $('#observatoryBtn'), observatoryOutput: $('#observatoryOutput')
+  observatoryBtn: $('#observatoryBtn'), observatoryOutput: $('#observatoryOutput'), editDogBtn: $('#editDogBtn')
 };
 
 const fallbackDog = (name) => ({
   name: name || 'Your Dog', breed: { label: 'Unknown / mixed breed', confidence: 'low', note: 'Add a clear, front-facing photo for a better visual estimate.' },
   appearance: ['adorable', 'expressive', 'ready for adventure'], occupation: 'Chief Sofa Security Officer',
   tagline: 'Professional snack inspector. Part-time human supervisor.', traits: ['loyal', 'chaotic', 'curious'],
-  stats: { chaos: 92, treats: 98, zoomies: 95, loyalty: 100 },
+  stats: { chaos: 72, treats: 92, zoomies: 84, loyalty: 98 },
   news: { headline: 'Human opened the refrigerator.', body: 'Millions of dogs are monitoring the situation. No treats have been confirmed.' },
   caseTitle: 'The Missing Biscuit', caseClue: 'The evidence mysteriously disappeared immediately after the investigation began.'
 });
@@ -58,28 +59,71 @@ els.uploadBox?.addEventListener('click', openPhotoPicker);
 els.uploadBox?.addEventListener('keydown', (event) => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); openPhotoPicker(); } });
 
 function renderAvatar() {
-  els.dogAvatar.textContent = '';
+  els.dogAvatar.replaceChildren();
   if (state.imageBase64) { const img = document.createElement('img'); img.src = `data:${state.mimeType};base64,${state.imageBase64}`; img.alt = `${state.dog?.name || 'Dog'} photo`; els.dogAvatar.appendChild(img); }
   else els.dogAvatar.textContent = '🐶';
+}
+
+function getBreedFamily(label = '') {
+  const value = label.toLowerCase();
+  if (/golden|retriever/.test(value)) return 'golden';
+  if (/labrador|lab\b/.test(value)) return 'lab';
+  if (/husky|malamute/.test(value)) return 'husky';
+  if (/shepherd/.test(value)) return 'shepherd';
+  if (/poodle/.test(value)) return 'poodle';
+  if (/shih|maltese|bichon|terrier|chihuahua|pom/.test(value)) return 'small';
+  if (/pug/.test(value)) return 'pug';
+  if (/bulldog|frenchie/.test(value)) return 'bulldog';
+  return 'mixed';
+}
+
+function deriveMood(dog) {
+  const stats = dog.stats || {};
+  const traits = Array.isArray(dog.traits) ? dog.traits.join(' ').toLowerCase() : '';
+  if (Number(stats.zoomies) >= 85) return { text: 'Zoomie mode · absolutely unstoppable', expressions: [['🤪', 'ZOOMIE'], ['😆', 'DELIGHTED'], ['😎', 'COOL'], ['🥳', 'PARTY'], ['🐶', 'READY']] };
+  if (Number(stats.treats) >= 85) return { text: 'Snack-hungry · tracking every biscuit', expressions: [['😋', 'HUNGRY'], ['🥹', 'PLEASE'], ['🤤', 'TREAT RADAR'], ['😄', 'HOPEFUL'], ['👀', 'WATCHING']] };
+  if (/chaotic|mischievous|naughty/.test(traits) || Number(stats.chaos) >= 82) return { text: 'Mischievous · probably planning something', expressions: [['😏', 'SUSPICIOUS'], ['😈', 'MISCHIEF'], ['😂', 'GIGGLING'], ['🙃', 'WHO, ME?'], ['😎', 'INNOCENT']] };
+  if (Number(stats.loyalty) >= 90) return { text: 'Devoted · keeping humans under supervision', expressions: [['🥰', 'LOVING'], ['😊', 'HAPPY'], ['🥹', 'EMOTIONAL'], ['😍', 'ADORING'], ['🐶', 'LOYAL']] };
+  return { text: 'Curious · investigating the human situation', expressions: [['😄', 'CURIOUS'], ['🤔', 'THINKING'], ['😮', 'SURPRISED'], ['😌', 'CHILL'], ['😄', 'HAPPY']] };
+}
+
+function startMoodLoop(dog) {
+  clearInterval(state.moodTimer);
+  const mood = deriveMood(dog); let index = 0;
+  const apply = () => {
+    const [emoji, label] = mood.expressions[index % mood.expressions.length];
+    els.expressionBubble.textContent = emoji; els.expressionLabel.textContent = label; els.moodText.textContent = mood.text;
+    els.expressionBubble.style.animation = 'none'; void els.expressionBubble.offsetWidth; els.expressionBubble.style.animation = '';
+    const avatar = els.dogAvatar;
+    const transforms = ['translateY(0) rotate(-1deg) scale(1)', 'translateY(-3px) rotate(1deg) scale(1.025)', 'translateY(0) rotate(0) scale(.985)', 'translateY(-2px) rotate(-1deg) scale(1.015)'];
+    avatar.style.transform = transforms[index % transforms.length];
+    index += 1;
+  };
+  apply(); state.moodTimer = setInterval(apply, 4200);
 }
 
 function renderDog(dog) {
   state.dog = dog;
   els.dogName.textContent = dog.name || 'Your Dog'; els.dogNameTop.textContent = `${String(dog.name || 'DOG').toUpperCase()} NETWORK`;
   els.occupation.textContent = dog.occupation || 'Professional Dog'; els.tagline.textContent = dog.tagline || 'Professional snack inspector.';
-  els.chaos.textContent = dog.stats?.chaos ?? 92; els.treats.textContent = dog.stats?.treats ?? 98; els.zoomies.textContent = dog.stats?.zoomies ?? 95; els.loyalty.textContent = dog.stats?.loyalty ?? 100;
+  const stats = dog.stats || {};
+  els.chaos.textContent = Number.isFinite(Number(stats.chaos)) ? Number(stats.chaos) : 72;
+  els.treats.textContent = Number.isFinite(Number(stats.treats)) ? Number(stats.treats) : 92;
+  els.zoomies.textContent = Number.isFinite(Number(stats.zoomies)) ? Number(stats.zoomies) : 84;
+  els.loyalty.textContent = Number.isFinite(Number(stats.loyalty)) ? Number(stats.loyalty) : 98;
   els.newsHeadline.textContent = dog.news?.headline || 'Breaking bark: human activity detected.'; els.newsBody.textContent = dog.news?.body || 'Dogs are monitoring the situation.';
   els.caseTitle.textContent = dog.caseTitle || 'The Missing Biscuit'; els.caseText.textContent = dog.caseClue || 'A suspicious biscuit-shaped mystery has appeared.';
   els.provider.textContent = `AI engine: ${dog.provider || 'BARKVERSE'}`; els.provider.classList.toggle('degraded', Boolean(dog.degraded));
   const breed = dog.breed || {}; els.breedLabel.textContent = breed.label || 'Unknown / mixed breed'; els.breedNote.textContent = breed.note || 'Visual estimate only; appearance can overlap across breeds.';
   const confidence = ['high', 'medium', 'low'].includes(breed.confidence) ? breed.confidence : 'low'; els.breedConfidence.textContent = `${confidence.toUpperCase()} CONFIDENCE`; els.breedConfidence.className = `confidence ${confidence}`;
+  els.breedPanel.dataset.family = getBreedFamily(breed.label);
   els.traits.replaceChildren(...(Array.isArray(dog.traits) ? dog.traits : []).slice(0, 5).map((trait) => { const span = document.createElement('span'); span.className = 'trait'; span.textContent = String(trait); return span; }));
-  renderAvatar();
+  renderAvatar(); startMoodLoop(dog);
 }
 
 els.photo.addEventListener('change', async () => {
   const file = els.photo.files?.[0]; if (!file) return;
-  if (!ALLOWED_MIME.has(file.type)) { els.uploadTitle.textContent = 'Use a web-safe photo'; els.uploadHint.textContent = 'Please choose JPEG, PNG or WebP. iPhone users can choose a compatible photo from Photos.'; els.photo.value = ''; state.imageBase64 = null; return; }
+  if (!ALLOWED_MIME.has(file.type)) { els.uploadTitle.textContent = 'Use a web-safe photo'; els.uploadHint.textContent = 'Please choose JPEG, PNG or WebP.'; els.photo.value = ''; state.imageBase64 = null; return; }
   if (file.size > MAX_IMAGE_BYTES) { els.uploadTitle.textContent = 'Photo is too large'; els.uploadHint.textContent = 'Choose a photo under 3 MB. We also optimize images before AI analysis.'; els.photo.value = ''; state.imageBase64 = null; return; }
   try {
     let image;
@@ -92,13 +136,25 @@ els.photo.addEventListener('change', async () => {
   } catch { state.imageBase64 = null; els.uploadTitle.textContent = 'Photo could not be prepared'; els.uploadHint.textContent = 'Try a JPEG, PNG or WebP image under 3 MB.'; }
 });
 
-els.demo.addEventListener('click', async () => {
+async function discoverDog() {
   setLoading(els.demo, true, 'Discovering dog…'); const requestedName = els.nameInput.value.trim().slice(0, 40);
   try {
     const response = await fetch('/api/dog', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name: requestedName, imageBase64: state.imageBase64, mimeType: state.mimeType }) });
     const dog = await response.json(); if (!response.ok) throw new Error(dog.error || 'Discovery failed'); renderDog(dog);
   } catch { renderDog(fallbackDog(requestedName)); }
-  els.world.classList.remove('hidden'); els.world.scrollIntoView({ behavior: 'smooth', block: 'start' }); setLoading(els.demo, false);
+  document.body.classList.add('in-world'); els.hero?.classList.add('screen-exit'); els.world.classList.remove('hidden');
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+  setLoading(els.demo, false);
+  // Enter is a user gesture, so a local bark is safe to attempt here even when external voice is unavailable.
+  barkDog('happy');
+  setTimeout(() => speakDog(`Hi ${state.dog?.name || 'human'}! Welcome to my internet. I have been waiting for snacks.`), 450);
+}
+
+els.demo.addEventListener('click', discoverDog);
+
+els.editDogBtn?.addEventListener('click', () => {
+  clearInterval(state.moodTimer); document.body.classList.remove('in-world'); els.hero?.classList.remove('screen-exit');
+  els.world.classList.add('hidden'); window.scrollTo({ top: 0, behavior: 'smooth' }); els.nameInput.focus();
 });
 
 els.caseBtn.addEventListener('click', () => {
@@ -106,7 +162,7 @@ els.caseBtn.addEventListener('click', () => {
     `${name} has been cleared of all charges. The biscuit was found inside ${name}'s stomach. Investigation closed.`,
     `New evidence: ${name} was seen near the biscuit. ${name} has requested a lawyer and a second biscuit.`,
     `Case solved. The human ate the biscuit. ${name} has demanded compensation in treats.`
-  ]; els.caseOutput.textContent = outcomes[Math.floor(Math.random() * outcomes.length)];
+  ]; els.caseOutput.textContent = outcomes[Math.floor(Math.random() * outcomes.length)]; barkDog('excited');
 });
 
 els.talkBtn.addEventListener('click', async () => {
@@ -116,9 +172,37 @@ els.talkBtn.addEventListener('click', async () => {
   setLoading(els.talkBtn, false);
 });
 
+els.hearDogBtn?.addEventListener('click', async () => {
+  const name = state.dog?.name || 'your dog';
+  const breed = state.dog?.breed?.label && state.dog.breed.label !== 'Unknown / mixed breed' ? state.dog.breed.label : 'a mysterious mixed breed';
+  const mood = deriveMood(state.dog || {}).text;
+  const message = `Hey! I am ${name}, ${breed}, and I am feeling ${mood.toLowerCase()}. My human says I should behave. I say we need treats.`;
+  els.dogReply.textContent = message; await speakDog(message); barkDog('happy');
+});
+els.barkBtn?.addEventListener('click', () => barkDog('excited'));
+
 async function speakDog(text) {
-  try { const response = await fetch('/api/voice', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ text: String(text).slice(0, 800) }) }); if (!response.ok) throw new Error('voice unavailable'); const blob = await response.blob(); const url = URL.createObjectURL(blob); els.dogAudio.src = url; els.dogAudio.classList.remove('hidden'); await els.dogAudio.play().catch(() => {}); els.voiceStatus.textContent = '🎙️ ElevenLabs dog voice'; }
-  catch { els.voiceStatus.textContent = '🔈 Voice fallback: browser speech'; if ('speechSynthesis' in window) { window.speechSynthesis.cancel(); const utterance = new SpeechSynthesisUtterance(text); utterance.rate = 1.05; utterance.pitch = 1.35; window.speechSynthesis.speak(utterance); } }
+  const clean = String(text || '').slice(0, 800); if (!clean) return;
+  try {
+    const response = await fetch('/api/voice', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ text: clean }) });
+    if (!response.ok) throw new Error('voice unavailable');
+    const blob = await response.blob(); const url = URL.createObjectURL(blob); els.dogAudio.src = url; els.dogAudio.classList.remove('hidden');
+    await els.dogAudio.play().catch(() => {}); els.voiceStatus.textContent = '🎙️ ElevenLabs dog voice';
+  } catch {
+    els.voiceStatus.textContent = '🔈 Browser dog voice fallback';
+    if ('speechSynthesis' in window) { window.speechSynthesis.cancel(); const utterance = new SpeechSynthesisUtterance(clean); utterance.rate = 1.04; utterance.pitch = 1.32; window.speechSynthesis.speak(utterance); }
+  }
+}
+
+function barkDog(style = 'happy') {
+  try {
+    const AudioContext = window.AudioContext || window.webkitAudioContext; if (!AudioContext) return;
+    const ctx = new AudioContext(); const now = ctx.currentTime;
+    const master = ctx.createGain(); master.gain.setValueAtTime(0.0001, now); master.gain.exponentialRampToValueAtTime(0.18, now + 0.025); master.gain.exponentialRampToValueAtTime(0.0001, now + 0.24); master.connect(ctx.destination);
+    const osc = ctx.createOscillator(); osc.type = 'square'; osc.frequency.setValueAtTime(style === 'excited' ? 270 : 220, now); osc.frequency.exponentialRampToValueAtTime(style === 'excited' ? 480 : 380, now + 0.09); osc.frequency.exponentialRampToValueAtTime(150, now + 0.22); osc.connect(master); osc.start(now); osc.stop(now + 0.25);
+    if (style === 'excited') setTimeout(() => barkDog('happy'), 180);
+    setTimeout(() => ctx.close().catch(() => {}), 500);
+  } catch {}
 }
 
 els.memoryBtn.addEventListener('click', async () => {
