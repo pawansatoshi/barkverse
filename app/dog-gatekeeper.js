@@ -58,11 +58,14 @@
     return candidates.filter(([, wallet]) => { if (!wallet || typeof wallet.connect !== 'function' || typeof wallet.signAndSendTransaction !== 'function') return false; const key = wallet.publicKey?.toString?.() || wallet; if (seen.has(key)) return false; seen.add(key); return true; });
   };
   async function getWalletProvider() {
+    if (!window.barkverseWalletConnect?.connect) { try { await import('/app/wallet-connect.js'); } catch {} }
+    if (window.barkverseWalletConnect?.connect) {
+      try { return await window.barkverseWalletConnect.connect(); }
+      catch (error) { if (String(error?.message || '').toLowerCase().includes('cancel')) throw error; }
+    }
     const wallets = injectedWallets();
     if (wallets.length) { const [name, wallet] = wallets[0]; return { wallet, address: wallet.publicKey?.toString?.() || '', source: name }; }
-    if (!window.barkverseWalletConnect?.connect) { try { await import('/app/wallet-connect.js'); } catch {} }
-    if (window.barkverseWalletConnect?.connect) { if (pawprintOutput) pawprintOutput.textContent = 'No compatible browser wallet detected. Opening the secure WalletConnect wallet chooser…'; return await window.barkverseWalletConnect.connect(); }
-    throw new Error('No Solana wallet detected. Install Phantom, Solflare, Backpack, or use WalletConnect.');
+    throw new Error('No Solana wallet detected. Install a Wallet Standard compatible wallet, use WalletConnect, or install Phantom, Solflare, or Backpack.');
   }
   pawprintButton?.addEventListener('click', async (event) => {
     event.preventDefault(); event.stopImmediatePropagation();
