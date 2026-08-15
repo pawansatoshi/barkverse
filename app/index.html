@@ -1,81 +1,107 @@
 <!doctype html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
   <meta name="description" content="BARKVERSE — what if dogs had their own internet?">
+  <meta name="theme-color" content="#171717">
   <title>BARKVERSE — The Dog Internet</title>
   <link rel="stylesheet" href="/app/styles.css">
 </head>
 <body>
-  <main class="shell">
-    <section class="hero">
-      <div class="badge">🐾 BARKVERSE</div>
-      <h1>What if dogs had<br><span>their own internet?</span></h1>
-      <p class="lead">Upload a dog. Discover the secret civilization they've been running behind our backs.</p>
-      <label class="upload" for="dogPhoto">
-        <span class="upload-icon">🐶</span>
-        <strong>Meet my dog</strong>
-        <small>Choose a photo to begin the discovery</small>
-        <input id="dogPhoto" type="file" accept="image/*">
-      </label>
-      <div id="preview" class="preview hidden"></div>
+<main class="shell">
+  <section class="hero" id="hero">
+    <div class="badge">🐾 BARKVERSE</div>
+    <h1>What if dogs had<br><span>their own internet?</span></h1>
+    <p class="lead">Upload a dog. Discover the secret civilization they've been running behind our backs.</p>
+    <div class="upload" id="uploadBox">
+      <span class="upload-icon">🐶</span>
+      <strong id="uploadTitle">Meet my dog</strong>
+      <small id="uploadHint">Choose a photo to begin the discovery</small>
+      <input id="dogPhoto" type="file" accept="image/jpeg,image/png,image/webp,image/heic">
+    </div>
+    <div id="preview" class="preview hidden"></div>
+    <div class="name-row">
+      <input id="dogNameInput" maxlength="40" placeholder="Dog's name (optional)" aria-label="Dog name">
       <button id="demoBtn" class="primary">Enter BARKVERSE →</button>
-    </section>
+    </div>
+    <p class="privacy-note">Your photo is sent only to the configured AI provider for this request. It is not written to the blockchain.</p>
+  </section>
 
-    <section id="world" class="world hidden">
-      <div class="topbar">
-        <div><span class="dot"></span> BARKVERSE ONLINE</div>
-        <div id="dogNameTop">DOG NETWORK</div>
+  <section id="world" class="world hidden" aria-live="polite">
+    <div class="topbar">
+      <div><span class="dot"></span> BARKNET ONLINE</div>
+      <div id="dogNameTop">DOG NETWORK</div>
+    </div>
+
+    <div class="identity">
+      <div class="avatar" id="dogAvatar">🐶</div>
+      <div class="identity-copy">
+        <div class="eyebrow">IDENTITY DISCOVERED</div>
+        <h2 id="dogName">Your Dog</h2>
+        <p id="occupation">Chief Sofa Security Officer</p>
+        <div class="provider" id="providerBadge">AI engine: preparing…</div>
       </div>
+    </div>
 
-      <div class="identity">
-        <div class="avatar" id="dogAvatar">🐶</div>
-        <div>
-          <div class="eyebrow">IDENTITY DISCOVERED</div>
-          <h2 id="dogName">Your Dog</h2>
-          <p id="occupation">Chief Sofa Security Officer</p>
+    <div class="stats">
+      <div><b id="chaos">92</b><span>Chaos</span></div>
+      <div><b id="treats">98</b><span>Treats</span></div>
+      <div><b id="zoomies">95</b><span>Zoomies</span></div>
+      <div><b id="loyalty">100</b><span>Loyalty</span></div>
+    </div>
+
+    <div class="grid">
+      <article class="card featured">
+        <span class="tag">BREAKING BARK</span>
+        <h3 id="newsHeadline">Human opened the refrigerator.</h3>
+        <p id="newsBody">Millions of dogs are monitoring the situation. No treats have been confirmed.</p>
+      </article>
+
+      <article class="card">
+        <span class="tag">HUMAN INVESTIGATION BUREAU</span>
+        <h3 id="caseTitle">The Missing Biscuit</h3>
+        <p id="caseText">A biscuit has disappeared. One suspect has already eaten the evidence.</p>
+        <button class="secondary" id="caseBtn">Investigate →</button>
+        <div id="caseOutput" class="result"></div>
+      </article>
+
+      <article class="card voice-card">
+        <span class="tag">DOG VOICE · ELEVENLABS</span>
+        <h3>Talk to your dog</h3>
+        <div class="ask-row">
+          <input id="talkInput" maxlength="500" placeholder="Why did you eat my homework?" aria-label="Ask your dog">
+          <button class="secondary" id="talkBtn">Ask →</button>
         </div>
+        <p id="dogReply">Your dog is waiting for a question.</p>
+        <audio id="dogAudio" controls class="hidden"></audio>
+        <div id="voiceStatus" class="status"></div>
+      </article>
+
+      <article class="card memory">
+        <span class="tag">MEMORY VAULT</span>
+        <h3>One thing you love</h3>
+        <input id="memoryInput" maxlength="500" placeholder="He waits at the door every day…" aria-label="Dog memory">
+        <button class="secondary" id="memoryBtn">Create memory →</button>
+        <div id="memoryOutput" class="memory-output"></div>
+        <button class="ghost hidden" id="pawprintBtn">🐾 Preserve this Pawprint on Solana devnet</button>
+        <div id="pawprintOutput" class="status"></div>
+      </article>
+    </div>
+
+    <section class="observatory card" id="observatory">
+      <div>
+        <span class="tag">BARKVERSE OBSERVATORY · SNOWFLAKE</span>
+        <h3>The dog internet, measured.</h3>
+        <p>Anonymous aggregate signals turn our fictional dog civilization into a living dashboard.</p>
       </div>
-
-      <div class="stats">
-        <div><b id="chaos">97</b><span>Chaos</span></div>
-        <div><b id="treats">99</b><span>Treats</span></div>
-        <div><b id="zoomies">94</b><span>Zoomies</span></div>
-        <div><b id="loyalty">100</b><span>Loyalty</span></div>
-      </div>
-
-      <div class="grid">
-        <article class="card featured">
-          <span class="tag">BREAKING BARK</span>
-          <h3 id="newsHeadline">Human opened the refrigerator.</h3>
-          <p id="newsBody">Millions of dogs are monitoring the situation. No treats have been confirmed.</p>
-        </article>
-
-        <article class="card">
-          <span class="tag">CASE FILE</span>
-          <h3>The Missing Biscuit</h3>
-          <p>A biscuit has disappeared. One suspect has already eaten the evidence.</p>
-          <button class="secondary" id="caseBtn">Investigate →</button>
-        </article>
-
-        <article class="card">
-          <span class="tag">DOG VOICE</span>
-          <h3>Talk to your dog</h3>
-          <p id="dogReply">Ask why the sofa is apparently now a legal residence.</p>
-          <button class="secondary" id="talkBtn">Ask the dog →</button>
-        </article>
-
-        <article class="card memory">
-          <span class="tag">MEMORY VAULT</span>
-          <h3>One thing you love</h3>
-          <input id="memoryInput" placeholder="He waits at the door..." maxlength="180">
-          <button class="secondary" id="memoryBtn">Create memory →</button>
-          <p id="memoryOutput"></p>
-        </article>
-      </div>
+      <button class="secondary" id="observatoryBtn">Open Observatory →</button>
+      <div id="observatoryOutput" class="observatory-grid"></div>
     </section>
-  </main>
-  <script src="/app/app.js"></script>
+
+    <footer class="footer">BARKVERSE · built for DEV Weekend Challenge: Dog Days Edition</footer>
+  </section>
+</main>
+<script src="/app/app.js"></script>
 </body>
 </html>
