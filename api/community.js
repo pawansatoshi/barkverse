@@ -1,0 +1,88 @@
+const crypto = require('crypto');
+const { jsonResponse } = require('../lib/ai');
+
+const MAX = { displayName: 32, dogName: 40, breed: 80, action: 24, target: 80 };
+const clean = (value, max) => String(value || '').replace(/[<>]/g, '').trim().slice(0, max);
+const hash = (value) => crypto.createHash('sha256').update(String(value || '')).digest('hex').slice(0, 32);
+
+function snowflakeConfig() {
+  return process.env.SNOWFLAKE_ACCOUNT && process.env.SNOWFLAKE_TOKEN && process.env.SNOWFLAKE_DATABASE && process.env.SNOWFLAKE_SCHEMA && process.env.SNOWFLAKE_WAREHOUSE;
+}
+
+async function sql(statement, bindings = []) {
+  const account = process.env.SNOWFLAKE_ACCOUNT.replace(/^https?:\/\//, '').replace(/\/$/, '');
+  const response = await fetch(`https://${account}/api/v2/statements`, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${process.env.SNOWFLAKE_TOKEN}`, 'Content-Type': 'application/json', Accept: 'application/json' },
+    body: JSON.stringify({
+      statement,
+      timeout: 20,
+      database: process.env.SNOWFLAKE_DATABASE,
+      schema: process.env.SNOWFLAKE_SCHEMA,
+      warehouse: process.env.SNOWFLAKE_WAREHOUSE,
+      role: process.env.SNOWFLAKE_ROLE,
+      bindings: Object.fromEntries(bindings.map((v, i) => [String(i + 1), { type: 'TEXT', value: String(v ?? '') }]))
+    })
+  });
+  if (!response.ok) throw new Error(`Snowflake ${response.status}`);
+  return response.json();
+}
+
+async function ensureTables() {
+  const table = process.env.SNOWFLAKE_COMMUNITY_TABLE || 'BARK_COMMUNITY';
+  const events = process.env.SNOWFLAKE_COMMUNITY_EVENTS_TABLE || 'BARK_COMMUNITY_EVENTS';
+  await sql(`CREATE TABLE IF NOT EXISTS ${table} (ACCOUNT_ID VARCHAR(64) PRIMARY KEY, DISPLAY_NAME VARCHAR(32), DOG_NAME VARCHAR(40), BREED VARCHAR(80), TRAITS VARCHAR(500), JOINED_AT TIMESTAMP_TZ DEFAULT CURRENT_TIMESTAMP(), LAST_SEEN TIMESTAMP_TZ DEFAULT CURRENT_TIMESTAMP(), STATUS VARCHAR(16) DEFAULT 'online')`);
+  await sql(`CREATE TABLE IF NOT EXISTS ${events} (EVENT_ID VARCHAR(64), ACCOUNT_ID VARCHAR(64), TARGET_ID VARCHAR(64), ACTION VARCHAR(24), CREATED_AT TIMESTAMP_TZ DEFAULT CURRENT_TIMESTAMP())`);
+  return { table, events };
+}
+
+function demoMembers() {
+  return [{ accountId: 'demo-1', displayName: 'Milo’s Human', dogName: 'Milo', breed: 'Golden Retriever', status: 'online', demo: true }, { accountId: 'demo-2', displayName: 'Luna’s Human', dogName: 'Luna', breed: 'Husky mix', status: 'online', demo: true }];
+}
+
+module.exports = async function handler(req, res) {
+  res.setHeader('Cache-Control', 'no-store');
+  try {
+    const action = clean(req.query?.action || (req.body || {}).action, MAX.action) || 'list';
+    if (!snowflakeConfig()) {
+      if (action === 'list') return jsonResponse(res, 200, { mode: 'local', members: demoMembers(), message: 'Community storage is not configured yet; local profiles still work.' });
+      return jsonResponse(res, 200, { mode: 'local', ok: true });
+    }
+
+    const { table, events } = await ensureTables();
+    if (req.method === 'GET' && action === 'list') {
+      const result = await sql(`SELECT ACCOUNT_ID, DISPLAY_NAME, DOG_NAME, BREED, TRAITS, STATUS, LAST_SEEN FROM ${table} WHERE STATUS = 'online' ORDER BY LAST_SEEN DESC LIMIT 50`);
+      const rows = (result.data || []).map((row) => ({ accountId: row[0], displayName: row[1], dogName: row[2], breed: row[3], traits: row[4] ? String(row[4]).split('|').filter(Boolean) : [], status: row[5] || 'online', lastSeen: row[6] }));
+      return jsonResponse(res, 200, { mode: 'snowflake', members: rows });
+    }
+
+    if (req.method !== 'POST') return jsonResponse(res, 405, { error: 'Method not allowed' });
+    const body = req.body || {};
+    const accountId = clean(body.accountId, 64) || hash(`${Date.now()}-${Math.random()}`);
+    const displayName = clean(body.displayName, MAX.displayName) || 'Dog Human';
+    const dogName = clean(body.dogName, MAX.dogName) || 'Your Dog';
+    const breed = clean(body.breed, MAX.breed) || 'Unknown / mixed breed';
+    const traits = Array.isArray(body.traits) ? body.traits.map((v) => clean(v, 32)).filter(Boolean).slice(0, 5).join('|') : '';
+
+    if (action === 'join') {
+      await sql(`MERGE INTO ${table} t USING (SELECT ? ACCOUNT_ID, ? DISPLAY_NAME, ? DOG_NAME, ? BREED, ? TRAITS) s ON t.ACCOUNT_ID=s.ACCOUNT_ID WHEN MATCHED THEN UPDATE SET DISPLAY_NAME=s.DISPLAY_NAME,DOG_NAME=s.DOG_NAME,BREED=s.BREED,TRAITS=s.TRAITS,LAST_SEEN=CURRENT_TIMESTAMP(),STATUS='online' WHEN NOT MATCHED THEN INSERT (ACCOUNT_ID,DISPLAY_NAME,DOG_NAME,BREED,TRAITS,JOINED_AT,LAST_SEEN,STATUS) VALUES (s.ACCOUNT_ID,s.DISPLAY_NAME,s.DOG_NAME,s.BREED,s.TRAITS,CURRENT_TIMESTAMP(),CURRENT_TIMESTAMP(),'online')`, [accountId, displayName, dogName, breed, traits]);
+      return jsonResponse(res, 200, { mode: 'snowflake', ok: true, accountId });
+    }
+
+    if (action === 'leave') {
+      await sql(`UPDATE ${table} SET STATUS='offline', LAST_SEEN=CURRENT_TIMESTAMP() WHERE ACCOUNT_ID=?`, [accountId]);
+      return jsonResponse(res, 200, { mode: 'snowflake', ok: true });
+    }
+
+    if (action === 'event') {
+      const targetId = clean(body.targetId, 80);
+      const eventAction = clean(body.eventAction, MAX.action) || 'wave';
+      await sql(`INSERT INTO ${events} (EVENT_ID,ACCOUNT_ID,TARGET_ID,ACTION,CREATED_AT) SELECT ?,?,?,?,CURRENT_TIMESTAMP()`, [hash(`${accountId}-${targetId}-${eventAction}-${Date.now()}-${Math.random()}`), accountId, targetId, eventAction]);
+      return jsonResponse(res, 200, { mode: 'snowflake', ok: true });
+    }
+
+    return jsonResponse(res, 400, { error: 'Unknown community action' });
+  } catch (error) {
+    return jsonResponse(res, 200, { mode: 'local-fallback', ok: false, members: demoMembers(), message: 'Community sync is temporarily unavailable; your local world remains safe.', error: error.message });
+  }
+};
