@@ -27,7 +27,17 @@
       edit.addEventListener('click', () => setTimeout(resume, 0));
     }
   };
+  const loadYouTubePlacement = () => {
+    if (document.querySelector('script[data-barkverse-youtube-placement]')) return;
+    const script = document.createElement('script');
+    script.src = '/app/youtube-placement-fix.js?v=20260816-2';
+    script.async = true;
+    script.dataset.barkverseYoutubePlacement = '1';
+    document.head.appendChild(script);
+  };
   bind();
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', loadYouTubePlacement, {once:true});
+  else loadYouTubePlacement();
   window.addEventListener('barkverse:languagechange', () => setTimeout(bind, 0));
   new MutationObserver(bind).observe(document.body, { childList: true, subtree: true });
 })();
