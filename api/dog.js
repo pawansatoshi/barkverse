@@ -2,55 +2,41 @@ const { generate, parseJsonText, jsonResponse } = require('../lib/ai');
 
 const MAX_IMAGE_BYTES = 3 * 1024 * 1024;
 const ALLOWED_MIME = new Set(['image/jpeg', 'image/png', 'image/webp']);
+const LANGS = new Set(['en','hi','es','fr','de','ja','ko']);
 const clamp = (value, min = 0, max = 100) => Math.max(min, Math.min(max, Number(value) || 0));
 const stat = (value, fallback) => value === undefined || value === null || value === '' || !Number.isFinite(Number(value)) ? fallback : clamp(value);
-
-function sanitizeDog(data, requestedName) {
-  const breed = data?.breed && typeof data.breed === 'object' ? data.breed : {};
-  return {
-    name: requestedName || (typeof data?.name === 'string' && data.name.trim() ? data.name.slice(0, 40) : 'Your Dog'),
-    breed: {
-      label: typeof breed.label === 'string' ? breed.label.slice(0, 80) : 'Unknown / mixed breed',
-      confidence: ['high', 'medium', 'low'].includes(breed.confidence) ? breed.confidence : 'low',
-      note: typeof breed.note === 'string' ? breed.note.slice(0, 180) : 'Visual estimate only; appearance can overlap across breeds.'
-    },
-    appearance: Array.isArray(data?.appearance) ? data.appearance.filter(v => typeof v === 'string').slice(0, 5) : [],
-    occupation: typeof data?.occupation === 'string' ? data.occupation.slice(0, 80) : 'Chief Sofa Security Officer',
-    tagline: typeof data?.tagline === 'string' ? data.tagline.slice(0, 180) : 'Professional snack inspector. Part-time human supervisor.',
-    traits: Array.isArray(data?.traits) ? data.traits.filter(v => typeof v === 'string').slice(0, 5) : ['loyal', 'chaotic', 'curious'],
-    stats: { chaos: stat(data?.stats?.chaos, 72), treats: stat(data?.stats?.treats, 92), zoomies: stat(data?.stats?.zoomies, 84), loyalty: stat(data?.stats?.loyalty, 98) },
-    news: { headline: typeof data?.news?.headline === 'string' ? data.news.headline.slice(0, 140) : 'Human opened the refrigerator.', body: typeof data?.news?.body === 'string' ? data.news.body.slice(0, 300) : 'Millions of dogs are monitoring the situation.' },
-    caseTitle: typeof data?.caseTitle === 'string' ? data.caseTitle.slice(0, 100) : 'The Missing Biscuit',
-    caseClue: typeof data?.caseClue === 'string' ? data.caseClue.slice(0, 300) : 'The evidence mysteriously disappeared immediately after the investigation began.'
-  };
+const fallbackCopy = {
+  en:{note:'Add a clear front-facing dog photo for a better visual estimate.',occupation:'Chief Sofa Security Officer',tagline:'Professional snack inspector. Part-time human supervisor.',traits:['loyal','chaotic','curious'],headline:'Human opened the refrigerator.',body:'Millions of dogs are monitoring the situation. No treats have been confirmed.',caseTitle:'The Missing Biscuit',caseClue:'The evidence mysteriously disappeared immediately after the investigation began.'},
+  hi:{note:'बेहतर visual estimate के लिए सामने से साफ़ dog photo दें।',occupation:'चीफ सोफा सिक्योरिटी ऑफिसर',tagline:'प्रोफेशनल ट्रीट इंस्पेक्टर और पार्ट-टाइम ह्यूमन सुपरवाइज़र।',traits:['वफादार','शरारती','जिज्ञासु'],headline:'इंसान ने फ्रिज खोला।',body:'लाखों डॉग स्थिति पर नज़र रख रहे हैं। अभी तक कोई ट्रीट कन्फर्म नहीं हुई।',caseTitle:'गायब बिस्किट',caseClue:'जांच शुरू होते ही सबूत रहस्यमय तरीके से गायब हो गया।'},
+  es:{note:'Añade una foto clara de frente para una mejor estimación visual.',occupation:'Jefe de Seguridad del Sofá',tagline:'Inspector profesional de premios y supervisor humano a tiempo parcial.',traits:['leal','caótico','curioso'],headline:'El humano abrió la nevera.',body:'Millones de perros vigilan la situación. No se han confirmado premios.',caseTitle:'La galleta desaparecida',caseClue:'La evidencia desapareció misteriosamente justo cuando comenzó la investigación.'},
+  fr:{note:'Ajoutez une photo nette de face pour une meilleure estimation visuelle.',occupation:'Chef de la sécurité du canapé',tagline:'Inspecteur professionnel de friandises et superviseur humain à temps partiel.',traits:['loyal','chaotique','curieux'],headline:'L’humain a ouvert le réfrigérateur.',body:'Des millions de chiens surveillent la situation. Aucune friandise confirmée.',caseTitle:'Le biscuit disparu',caseClue:'La preuve a mystérieusement disparu dès le début de l’enquête.'},
+  de:{note:'Füge ein klares Foto von vorne für eine bessere visuelle Schätzung hinzu.',occupation:'Leiter der Sofasicherheit',tagline:'Professioneller Leckerli-Inspektor und Teilzeit-Menschenaufseher.',traits:['treu','chaotisch','neugierig'],headline:'Der Mensch hat den Kühlschrank geöffnet.',body:'Millionen Hunde beobachten die Lage. Keine Leckerlis bestätigt.',caseTitle:'Der verschwundene Keks',caseClue:'Der Beweis verschwand auf mysteriöse Weise, sobald die Untersuchung begann.'},
+  ja:{note:'より良い見た目の推定には正面からの鮮明な写真を追加してください。',occupation:'ソファ警備主任',tagline:'プロのおやつ検査員、非常勤の人間監督官。',traits:['忠実','いたずら好き','好奇心旺盛'],headline:'人間が冷蔵庫を開けました。',body:'何百万匹もの犬が状況を監視しています。おやつはまだ確認されていません。',caseTitle:'消えたビスケット',caseClue:'捜査が始まった直後、証拠が謎のように消えました。'},
+  ko:{note:'더 정확한 외형 추정을 위해 정면의 선명한 강아지 사진을 추가하세요.',occupation:'소파 보안 책임자',tagline:'전문 간식 검사관이자 파트타임 인간 감독관.',traits:['충성스러운','장난꾸러기','호기심 많은'],headline:'사람이 냉장고를 열었습니다.',body:'수백만 마리의 강아지가 상황을 지켜보고 있습니다. 간식은 아직 확인되지 않았습니다.',caseTitle:'사라진 비스킷',caseClue:'조사가 시작되자 증거가 신비롭게 사라졌습니다.'}
+};
+function sanitizeDog(data, requestedName, language='en') {
+  const copy=fallbackCopy[language]||fallbackCopy.en; const breed = data?.breed && typeof data.breed === 'object' ? data.breed : {};
+  return { name: requestedName || (typeof data?.name === 'string' && data.name.trim() ? data.name.slice(0, 40) : (language==='hi'?'आपका डॉग':'Your Dog')),
+    breed:{label:typeof breed.label==='string'?breed.label.slice(0,80):'Unknown / mixed breed',confidence:['high','medium','low'].includes(breed.confidence)?breed.confidence:'low',note:typeof breed.note==='string'?breed.note.slice(0,180):copy.note},
+    appearance:Array.isArray(data?.appearance)?data.appearance.filter(v=>typeof v==='string').slice(0,5):[],occupation:typeof data?.occupation==='string'?data.occupation.slice(0,80):copy.occupation,tagline:typeof data?.tagline==='string'?data.tagline.slice(0,180):copy.tagline,
+    traits:Array.isArray(data?.traits)?data.traits.filter(v=>typeof v==='string').slice(0,5):copy.traits,
+    stats:{chaos:stat(data?.stats?.chaos,72),treats:stat(data?.stats?.treats,92),zoomies:stat(data?.stats?.zoomies,84),loyalty:stat(data?.stats?.loyalty,98)},
+    news:{headline:typeof data?.news?.headline==='string'?data.news.headline.slice(0,140):copy.headline,body:typeof data?.news?.body==='string'?data.news.body.slice(0,300):copy.body},caseTitle:typeof data?.caseTitle==='string'?data.caseTitle.slice(0,100):copy.caseTitle,caseClue:typeof data?.caseClue==='string'?data.caseClue.slice(0,300):copy.caseClue};
 }
+const fallback=(name,language='en')=>sanitizeDog({breed:{label:'Unknown / mixed breed',confidence:'low'},appearance:[],stats:{chaos:72,treats:92,zoomies:84,loyalty:98}},name,language);
+module.exports=async function handler(req,res){
+  if(req.method!=='POST')return jsonResponse(res,405,{error:'Method not allowed'});
+  try{
+    const {name,imageBase64,mimeType}=req.body||{}; const language=LANGS.has(String(req.body?.language||''))?String(req.body.language):'en'; const dogName=typeof name==='string'?name.trim().slice(0,40):'';
+    if(!imageBase64)return jsonResponse(res,400,{error:language==='hi'?'पहले dog photo upload या take करें।':'Please upload or take a photo of a dog first.',code:'DOG_PHOTO_REQUIRED'});
+    if(!ALLOWED_MIME.has(mimeType)||imageBase64.length>Math.ceil((MAX_IMAGE_BYTES*4)/3))return jsonResponse(res,400,{error:language==='hi'?'Unsupported या बहुत बड़ी image है। JPEG, PNG या WebP इस्तेमाल करें।':'Unsupported or oversized image. Use a JPEG, PNG, or WebP under 3 MB.',code:'INVALID_IMAGE'});
+    const prompt=`You are BARKVERSE canine visual gatekeeper and dog discovery intelligence. Analyze the supplied image. First determine whether the main subject is a real dog/canine. Return ONLY valid JSON with exactly these keys: isDog, dogConfidence, rejectionReason, name, breed, appearance, occupation, tagline, traits, stats, news, caseTitle, caseClue.
 
-const fallback = (name) => sanitizeDog({ breed: { label: 'Unknown / mixed breed', confidence: 'low', note: 'Add a clear front-facing dog photo for a better visual estimate.' }, appearance: ['adorable', 'expressive', 'ready for adventure'], occupation: 'Chief Sofa Security Officer', tagline: 'Professional snack inspector. Part-time human supervisor.', traits: ['loyal', 'chaotic', 'curious'], stats: { chaos: 72, treats: 92, zoomies: 84, loyalty: 98 }, news: { headline: 'Human opened the refrigerator.', body: 'Millions of dogs are monitoring the situation. No treats have been confirmed.' }, caseTitle: 'The Missing Biscuit', caseClue: 'The evidence mysteriously disappeared immediately after the investigation began.' }, name);
+isDog MUST be true only when the image clearly contains a dog as the primary subject. For cats, people, cars, toys, scenery, food, screenshots, objects, or ambiguous/non-canine images set isDog=false. dogConfidence is a number 0-100. If isDog=false, rejectionReason must be a short friendly message in language ${language}. Do not generate a dog profile for rejected images.
 
-module.exports = async function handler(req, res) {
-  if (req.method !== 'POST') return jsonResponse(res, 405, { error: 'Method not allowed' });
-  try {
-    const { name, imageBase64, mimeType } = req.body || {};
-    const dogName = typeof name === 'string' ? name.trim().slice(0, 40) : '';
-    if (!imageBase64) return jsonResponse(res, 400, { error: 'Please upload or take a photo of a dog first.', code: 'DOG_PHOTO_REQUIRED' });
-    if (!ALLOWED_MIME.has(mimeType) || imageBase64.length > Math.ceil((MAX_IMAGE_BYTES * 4) / 3)) return jsonResponse(res, 400, { error: 'Unsupported or oversized image. Use a JPEG, PNG, or WebP under 3 MB.', code: 'INVALID_IMAGE' });
-
-    const prompt = `You are BARKVERSE canine visual gatekeeper and dog discovery intelligence. Analyze the supplied image. First determine whether the main subject is a real dog/canine. Return ONLY valid JSON with exactly these keys: isDog, dogConfidence, rejectionReason, name, breed, appearance, occupation, tagline, traits, stats, news, caseTitle, caseClue.
-
-isDog MUST be true only when the image clearly contains a dog as the primary subject. For cats, people, cars, toys, scenery, food, screenshots, objects, or ambiguous/non-canine images set isDog=false. dogConfidence is a number 0-100. If isDog=false, rejectionReason must be a short friendly message such as "That photo is not a dog. BARKVERSE only accepts dogs 🐶 Try a dog photo instead." Do not generate a dog profile for rejected images.
-
-If isDog=true, estimate visible breed/type from visual evidence. The breed object MUST contain label, confidence, note. Allowed confidence values: high, medium, low. Never claim exact breed as certain; mixed-breed/uncertain is valid. Do not infer health, ownership, identity, protected traits, or other sensitive attributes. appearance is 3-5 visual observations. traits are fictional playful personality words. stats are integers 0-100. news and case fields must be funny, affectionate and child-safe.
-
-The name is ${dogName ? JSON.stringify(dogName) : 'not provided'}. If no name is provided, return "Your Dog" and do not invent a personal name. This is a fictional entertainment experience, not veterinary advice or identity recognition.`;
-
-    let result;
-    try { result = await generate({ prompt, image: { data: imageBase64, mimeType } }); }
-    catch { return jsonResponse(res, 503, { error: 'Dog vision is temporarily unavailable. Please try again.', code: 'VISION_UNAVAILABLE' }); }
-
-    const parsed = parseJsonText(result.text) || {};
-    if (parsed.isDog !== true || Number(parsed.dogConfidence) < 55) {
-      return jsonResponse(res, 422, { error: typeof parsed.rejectionReason === 'string' ? parsed.rejectionReason.slice(0, 220) : 'That photo is not clearly a dog. BARKVERSE only accepts dog photos 🐶', code: 'NOT_A_DOG', dogConfidence: Number(parsed.dogConfidence) || 0 });
-    }
-    return jsonResponse(res, 200, { ...sanitizeDog(parsed, dogName), provider: result.provider, degraded: false });
-  } catch { return jsonResponse(res, 500, { error: 'We could not inspect that photo. Please try a clear dog photo.', code: 'DISCOVERY_ERROR' }); }
+If isDog=true, estimate visible breed/type from visual evidence. The breed object MUST contain label, confidence, note. Allowed confidence values: high, medium, low. Never claim exact breed as certain; mixed-breed/uncertain is valid. Do not infer health, ownership, identity, protected traits, or other sensitive attributes. appearance is 3-5 visual observations. traits are fictional playful personality words. stats are integers 0-100. news and case fields must be funny, affectionate and child-safe. ALL human-facing strings in breed, appearance, occupation, tagline, traits, news, caseTitle and caseClue MUST be written entirely in language code ${language}. The name is ${dogName?JSON.stringify(dogName):'not provided'}; if no name is provided use a natural translation of 'Your Dog' appropriate to ${language}. This is a fictional entertainment experience, not veterinary advice or identity recognition.`;
+    let result; try{result=await generate({prompt,image:{data:imageBase64,mimeType}})}catch{return jsonResponse(res,503,{error:language==='hi'?'Dog vision अभी उपलब्ध नहीं है। फिर कोशिश करें।':'Dog vision is temporarily unavailable. Please try again.',code:'VISION_UNAVAILABLE'});}
+    const parsed=parseJsonText(result.text)||{}; if(parsed.isDog!==true||Number(parsed.dogConfidence)<55)return jsonResponse(res,422,{error:typeof parsed.rejectionReason==='string'?parsed.rejectionReason.slice(0,220):(language==='hi'?'यह फोटो साफ़ तौर पर dog नहीं दिखाती। BARKVERSE केवल dog photos स्वीकार करता है।':'That photo is not clearly a dog. BARKVERSE only accepts dog photos.'),code:'NOT_A_DOG',dogConfidence:Number(parsed.dogConfidence)||0});
+    return jsonResponse(res,200,{...sanitizeDog(parsed,dogName,language),provider:result.provider,degraded:false,language});
+  }catch{return jsonResponse(res,500,{error:'We could not inspect that photo. Please try a clear dog photo.',code:'DISCOVERY_ERROR'});}
 };
